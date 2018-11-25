@@ -20,6 +20,8 @@
 #include <OneWire.h>
 #include <avr/wdt.h>
 #include <TimeLib.h> 
+#include <Wire.h>
+#include <Adafruit_INA219.h>
 
 //extern RFM69 _radio;
 
@@ -70,9 +72,8 @@
 #define BATTERY_READS 10
 #define DELTA_VBATT 0
 #define BATTERY_SENSE A3 
-#define CURR_SENSE A2
 #define SOLAR_SENSE A0
-#define PULSEPIN A1
+#define PULSEPIN A2
 
 //Auto-reset
 #define MESSAGES_FAILED_REBOOT 20
@@ -99,7 +100,7 @@
 
 
 float lastTemperature=-127,temperature=-127,deltatemp,radioTemperature;
-float Sbatt, Vbatt, deltavbatt, CurrValue, current;
+float Sbatt, Vbatt, deltavbatt, current;
 unsigned int BattValue, Batt, Battarray[BATTERY_READS], Battindex = 0, BattarrayTotal = 0;
 unsigned int Currarray[BATTERY_READS], Currindex = 0, CurrarrayTotal = 0;
 int radioRSSIarray[RSSI_READS], radioRSSIindex=0,radioRSSIarrayTotal=0,messagesFailed=0;
@@ -116,6 +117,7 @@ unsigned long cicles=0;
 
 OneWire oneWire(ONE_WIRE_BUS); // Setup a oneWire instance to communicate with any OneWire devices (not just Maxim/Dallas temperature ICs)
 DallasTemperature sensors(&oneWire); // Pass the oneWire reference to Dallas Temperature. 
+Adafruit_INA219 ina219; //INA219 variable
 
 //Mysensors Messages initialization
 MyMessage msgB(BVOLT_ID,V_VOLTAGE);
@@ -151,6 +153,11 @@ void before()
     delay(LED_DELAY);
   }
 
+  //Initialing INA219
+  Serial.println(F("Initialing INA219"));
+  ina219.begin();
+  ina219.setCalibration_16V_400mA(); //Increase sensitivity
+
   Serial.println(F("initialing battery voltage"));
   analogReference(INTERNAL);
   analogRead(BATTERY_SENSE);
@@ -166,20 +173,17 @@ void before()
   Serial.print((float)BattarrayTotal/BATTERY_READS * BATT_CALC);
   Serial.println(F(""));
 
+  CurrarrayTotal=0;
   Serial.println(F("initialing Current"));
-  analogReference(DEFAULT);
-  delay(100);
-  analogRead(CURR_SENSE);
   for (i = 0; i < BATTERY_READS; i++) {
-    analogRead(CURR_SENSE);
-    Currarray[i] = analogRead(CURR_SENSE);
+    Currarray[i] = ina219.getCurrent_mA();
     CurrarrayTotal += Currarray[i];
     Serial.print(" ");
-    Serial.print((float)((int)(Currarray[i]-CURR_ZERO)*(float)17.419763513513513513513513513514));
+    Serial.print(Currarray[i]);
   }
   Serial.println(F(""));
   Serial.print(F("Current average"));
-  Serial.print((float)((float)((float)CurrarrayTotal/BATTERY_READS-CURR_ZERO)*(float)17.419763513513513513513513513514));
+  Serial.print(CurrarrayTotal/BATTERY_READS);
   Serial.println(F(""));
   analogReference(INTERNAL);
 
@@ -297,38 +301,13 @@ void readRadioTemp () {
   radioTemperature = _radio.readTemperature(0);
 }
 
-void readCurrent_old () {
-  analogReference(DEFAULT);
-  wait (100);
-  i=analogRead(CURR_SENSE);
-  wait(3);
-  i=analogRead(CURR_SENSE);
-  i=(i + analogRead(CURR_SENSE))/2;
-  current = (float)(i-506)*(float)17.419763513513513513513513513514;
-  Serial.print(F("--Current analog average "));
-  Serial.println(i);
-  Serial.print (current);
-  Serial.println (F(" milliamperes"));
-  
-  analogReference(INTERNAL);
-  wait(100);
-}
-
-
 // Reads Current while averaging the last BATTERY_READS values
 void readCurrent () {
-
-  analogReference(DEFAULT);
-  wait (100);
   Serial.println(F("Reading Current"));
-  //primes the analog converter
-  analogRead(CURR_SENSE);
-  analogRead(CURR_SENSE);
-  analogRead(CURR_SENSE);
-  //Reads battery voltage
-  Currarray[Currindex] = analogRead(CURR_SENSE);
+  //Reads current
+  Currarray[Currindex] = ina219.getCurrent_mA();
   Serial.print(F("Current read "));
-  Serial.println((int)(Currarray[Currindex]-CURR_ZERO)*(float)17.419763513513513513513513513514);
+  Serial.println(Currarray[Currindex]);
   Serial.print(F("Index "));
   Serial.println(Currindex);
   //calculates the current average
@@ -342,15 +321,9 @@ void readCurrent () {
     Currindex = 0;
   }
 
-  CurrValue = CurrarrayTotal / BATTERY_READS;
-  current = (float)(CurrValue-506)*(float)17.419763513513513513513513513514;
-  Serial.print(F("Current analog average "));
-  Serial.println(CurrValue);
+  current = CurrarrayTotal / BATTERY_READS;
   Serial.print(F("Current average "));
   Serial.println(current);
-
-  analogReference(INTERNAL);
-  wait(100);
 }
 
 void readTemp () {
@@ -646,7 +619,7 @@ void wdsleep(unsigned long ms) {
   unsigned long enter = hwMillis();
   #if defined(MY_REPEATER_FEATURE)
   while (hwMillis() - enter < ms) {
-    wait(90);
+    wait(99);
     heartbeat();
   }
   #else
@@ -658,7 +631,7 @@ void heartbeat () {
   wdt_reset();
   pinMode(PULSEPIN, OUTPUT);
   digitalWrite(PULSEPIN, LOW);
-  wait(10);
+  wait(1);
   // Return to high-Z
   pinMode(PULSEPIN, INPUT);
 }
