@@ -156,7 +156,8 @@ void before()
   //Initialing INA219
   Serial.println(F("Initialing INA219"));
   ina219.begin();
-  ina219.setCalibration_16V_400mA(); //Increase sensitivity
+  ina219.setCalibration_32V_1A(); //double sensitivity (normal 2A)
+  //ina219.setCalibration_16V_400mA(); //even more sensitivity (too high for charging current Li-ion)
 
   Serial.println(F("initialing battery voltage"));
   analogReference(INTERNAL);
