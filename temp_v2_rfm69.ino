@@ -6,6 +6,7 @@
 
 // Enable debug prints to serial monitor
 //#define MY_DEBUG 
+#define MY_SPLASH_SCREEN_DISABLED
 
 // Enable and select radio type attached
 //#define MY_RADIO_NRF24
@@ -535,8 +536,8 @@ void gwPresent () {
 
 void resend(MyMessage &msg, int repeats, int timeout)
 {
-  int repeat = 0;
-  int repeatdelay = 0;
+  byte repeat = 0;
+  byte repeatdelay = 0;
   boolean sendOK = false;
 
   while ((sendOK == false) and (repeat < repeats)) {
@@ -551,8 +552,8 @@ void resend(MyMessage &msg, int repeats, int timeout)
       Serial.print(repeat);
       Serial.print(" Failed ");
       Serial.println(messagesFailed);
-      repeatdelay += 500;
-      wdsleep(repeatdelay);
+      repeatdelay += 1;
+      wdsleep(repeatdelay*500);
     }
     repeat++; 
   }
