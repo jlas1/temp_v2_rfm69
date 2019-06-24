@@ -1,12 +1,12 @@
 /*
  * 
- * Mysensors Temperature Sensor with battery monitoring
+ * Mysensors Solar Power, Temperature and battery monitoring
  * 
  */
 
 // Enable debug prints to serial monitor
-//#define MY_DEBUG 
-#define MY_SPLASH_SCREEN_DISABLED
+#define MY_DEBUG 
+//#define MY_SPLASH_SCREEN_DISABLED
 
 // Enable and select radio type attached
 //#define MY_RADIO_NRF24
@@ -90,10 +90,10 @@
 #define BAUD_RATE 115200
 
 //Cycles in between updates
-#define SECONDS_PER_CICLE 150
+#define SECONDS_PER_CICLE 30
 #define CICLES_PER_PRESENT 2880
-#define CICLES_PER_UPDATE 1
-#define CICLES_PER_TIMEUPDATE 240
+#define CICLES_PER_UPDATE 5
+#define CICLES_PER_TIMEUPDATE 1200
 
 //Transmit Retries
 #define HIGH_PRIORITY_RETRIES 10
@@ -103,7 +103,8 @@
 float lastTemperature=-127,temperature=-127,deltatemp,radioTemperature;
 float Sbatt, Vbatt, deltavbatt, current;
 unsigned int BattValue, Batt, Battarray[BATTERY_READS], Battindex = 0, BattarrayTotal = 0;
-unsigned int Currarray[BATTERY_READS], Currindex = 0, CurrarrayTotal = 0;
+int Currarray[BATTERY_READS], CurrarrayTotal = 0;
+unsigned int Currindex = 0;
 int radioRSSIarray[RSSI_READS], radioRSSIindex=0,radioRSSIarrayTotal=0,messagesFailed=0;
 volatile int radioRSSI, isACKed = false;
 unsigned int nosend = CICLES_PER_UPDATE, i;
@@ -473,7 +474,7 @@ void sendValues () {
   }
   //reset count;
   nosend = 1;
-
+ 
   //print debug message
   Serial.println(F("Sending Values"));
   //send values
